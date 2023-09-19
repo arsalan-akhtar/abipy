@@ -256,7 +256,7 @@ class RelaxationProfiler:
             gs = self.abinit_run_gs_atoms(directory, atoms)
             abiml_nsteps += 1
             print("Iteration:", count, "abi_fmax:", gs.fmax, ", fmax:", self.fmax)
-            print("abinit_stress_voigt", gs.stress_voigt)
+            #print("abinit_stress_voigt", gs.stress_voigt)
             #print_atoms(atoms, cart_forces=gs.forces)
             print("abinit_energy", gs.energy )   
             # Store ab-initio forces/stresses in the ML calculator and attach it to atoms.

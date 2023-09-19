@@ -222,7 +222,7 @@ def abinit_relax(ctx, filepath,
     """
     Interact with ABINIT in hybrid relaxation mode.
     """
-    ml_relaxer = aseml.MlRelaxer.from_abinit_yaml_file(filepath)
+    ml_relaxer = aseml.MlRelaxer.from_abinit_yaml_file(filepath,workdir)
     print(ml_relaxer.to_string(verbose=verbose))
     ml_relaxer.run()
     return 0

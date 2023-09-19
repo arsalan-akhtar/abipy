@@ -1088,7 +1088,7 @@ class _MyCalculator:
                 # Change forces only if have invoked store_abi_forstr_atoms
                 if self.correct_forces_algo == CORRALGO.delta:
                     # Apply delta correction to forces.
-                    alpha = 1.0
+                    alpha = 2.0
                     delta_forces = (abi_forces - ml_forces)/alpha
                     if self.__verbose > 1: print("Updating forces with delta_forces:\n", abi_forces)
                     forces += delta_forces
@@ -1491,7 +1491,9 @@ class MlRelaxer(MlBase):
 
         atoms = structure.to_ase_atoms()
         if iatfix is not None:
-            raise NotImplementedError()
+            #raise Warning()
+            #raise NotImplementedError()
+            print("Warning: NotImplemented")
             #aseml.fix_atoms(atoms, fix_inds=fix_inds, fix_symbols=fix_symbols)
 
         ######################################################################
