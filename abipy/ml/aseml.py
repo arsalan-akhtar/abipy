@@ -1477,6 +1477,7 @@ class MlRelaxer(MlBase):
             ntypat=ntypat,
             znucl=znucl,
         ) #; print(structure)
+        
 
         atoms = structure.to_ase_atoms()
         if iatfix is not None:
@@ -1523,7 +1524,8 @@ class MlRelaxer(MlBase):
 
         def fmt_vec3(vec) -> str:
             return "{:.12e} {:.12e} {:.12e}".format(*vec)
-
+        #AA
+        self.atoms = abisanitize_atoms(self.atoms.copy())
         with open(filepath, "wt") as fh:
             fh.write("%i # format_version\n" % format_version)
             fh.write("%i # natom\n" % len(self.atoms))
