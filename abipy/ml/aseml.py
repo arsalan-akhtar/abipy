@@ -1558,10 +1558,18 @@ class MlRelaxer(MlBase):
         # Set internal parameters according to YAML file and build object.
         fmax, steps, optimizer = 0.01, 500, "BFGS"
 
-        new = cls(atoms, relax_mode, fmax, pressure, steps, optimizer, nn_name, verbose,
-                  workdir=workdir, prefix=prefix)
+        #new = cls(atoms, relax_mode, fmax, pressure, steps, optimizer, nn_name, verbose,
+        #          workdir=workdir, prefix=prefix)
 
         # Set delta forces and delta stress if the script is called by ABINIT.
+        ## AA
+        gs_forces = abi_cart_forces
+        gs_stresses = abi_cart_stresses
+        
+        print (f"AADB: gs_forces {gs_forces=}")
+        
+        new = cls(atoms, relax_mode, fmax, pressure, steps, optimizer, nn_name, verbose,
+                  workdir=workdir, prefix=prefix,gs_forces=gs_forces,gs_stresses=gs_stresses)
 
         return new
 
@@ -1592,7 +1600,7 @@ class MlRelaxer(MlBase):
         return filepath
 
     def __init__(self, atoms: Atoms, relax_mode, fmax, pressure, steps, optimizer, nn_name, verbose,
-                 workdir, prefix=None):
+                 workdir, prefix=None,gs_forces=None,gs_stresses=None):
         """
         Args:
             atoms: ASE atoms to relax.
@@ -1614,6 +1622,8 @@ class MlRelaxer(MlBase):
         self.pressure = pressure
         self.nn_name = nn_name
         self.verbose = verbose
+        self.gs_forces = gs_forces
+        self.gs_stresses = gs_stresses
 
     def to_string(self, verbose=0) -> str:
         """String representation with verbosity level `verbose`."""
@@ -1634,6 +1644,14 @@ class MlRelaxer(MlBase):
 
 {self.atoms}
 
+=== GS Forces ===
+
+{self.gs_forces}
+
+=== GS Stresses ===
+
+{self.gs_stresses}
+
 """
 
     def run(self):
@@ -1642,7 +1660,18 @@ class MlRelaxer(MlBase):
         workdir = self.workdir
         self.atoms.calc = CalcBuilder(self.nn_name).get_calculator()
         # TODO: Here I should add the ab-initio forces/stress to the calculator to correct the ML ones
-
+        ##AA
+        self.atoms.calc.set_correct_forces_algo(CORRALGO.delta)
+        self.atoms.calc.set_correct_stress_algo(CORRALGO.delta)
+        
+        ##AA Print stuff
+        print (f"AADB: gs_forces {self.gs_forces=}");print (f"AADB: gs_stress {self.gs_stresses=}")
+        if self.gs_forces is not None:
+            self.atoms.calc.store_abi_forstr_atoms(self.gs_forces, self.gs_stresses, self.atoms)
+        self.atoms.calc = self.atoms.calc
+ 
+        ##AA DONE
+        
         print(f"Relaxing structure with relax mode: {self.relax_mode} ...")
         relax_kws = dict(calculator=self.atoms.calc,
                          optimizer=self.optimizer,
