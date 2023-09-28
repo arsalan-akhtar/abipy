@@ -801,6 +801,7 @@ class AseRelaxation:
     def __init__(self, dyn, r0, r1, traj_path):
         self.dyn = dyn
         self.r0, self.r1 = r0, r1
+       
         self.traj_path = str(traj_path)
 
     @lazy_property
@@ -822,7 +823,7 @@ class AseRelaxation:
         if tags is None: tags = ["unrelaxed", "relaxed"],
         df = dataframe_from_results_list(tags, [r0, r1], mode=mode)
         print_dataframe(df, end="\n", file=stream)
-
+        print (f"stress {r1.stress=}")
     #def plot(self, **kwargs):
 
 
@@ -887,6 +888,8 @@ def relax_atoms(atoms: Atoms, relax_mode: str, optimizer: str, fmax: float, pres
     """
     from ase.constraints import ExpCellFilter
     from ase.io import read
+    ## AA
+    #from ase.spacegroup.symmetrize import FixSymmetry
 
     RX_MODE.validate(relax_mode)
     if relax_mode == RX_MODE.no:
@@ -915,7 +918,8 @@ def relax_atoms(atoms: Atoms, relax_mode: str, optimizer: str, fmax: float, pres
             pf("")
 
         r0 = AseResults.from_atoms(atoms)
-
+        ##AA
+        #atoms.set_constraint(FixSymmetry(atoms))
         dyn = opt_class(ExpCellFilter(atoms, scalar_pressure=pressure), **opt_kwargs) if relax_mode == RX_MODE.cell else \
               opt_class(atoms, **opt_kwargs)
 
@@ -1539,7 +1543,7 @@ class MlRelaxer(MlBase):
         def fmt_vec3(vec) -> str:
             return "{:.12e} {:.12e} {:.12e}".format(*vec)
         #AA
-        self.atoms = abisanitize_atoms(self.atoms.copy())
+        #self.atoms = abisanitize_atoms(self.atoms.copy())
         with open(filepath, "wt") as fh:
             fh.write("%i # format_version\n" % format_version)
             fh.write("%i # natom\n" % len(self.atoms))
@@ -1619,7 +1623,7 @@ class MlRelaxer(MlBase):
 
         relax = relax_atoms(self.atoms, **relax_kws)
         relax.summarize(tags=["unrelaxed", "relaxed"])
-
+        #print (relax.)
         # Write files with final structure and dynamics.
         formats = ["poscar",]
         outpath_fmt = write_atoms(self.atoms, workdir, self.verbose, formats=formats)
