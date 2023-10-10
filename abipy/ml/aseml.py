@@ -1340,6 +1340,7 @@ class MlBase(HasPickleIO):
         """
         self.workdir = workdir_with_prefix(workdir, prefix)
         self.basename_info = []
+        #self.corr_algo = CORRALGO.from_string(corr_algo)
 
     def __str__(self):
         # Delegated to the subclass.
@@ -1461,7 +1462,7 @@ class MlRelaxer(MlBase):
     """
 
     @classmethod
-    def from_abinit_yaml_file(cls, filepath: str, workdir=None, prefix=None) -> MlRelaxer:
+    def from_abinit_yaml_file(cls,filepath: str, workdir=None, prefix=None) -> MlRelaxer:
         """
         Build object from a YAML file produced by ABINIT in hybrid relaxation mode.
         """
@@ -1566,10 +1567,16 @@ class MlRelaxer(MlBase):
         gs_forces = abi_cart_forces
         gs_stresses = abi_cart_stresses
         
-        print (f"AADB: gs_forces {gs_forces=}")
+        print (f"AADB: {gs_forces=}")
+
+        #corr_algo = CORRALGO.from_string(corr_algo)
+        #corr_algo=corr_algo
+        corr_algo = doc.pop("corr_algo")
+        print (f"AADB: {corr_algo=}")
         
+
         new = cls(atoms, relax_mode, fmax, pressure, steps, optimizer, nn_name, verbose,
-                  workdir=workdir, prefix=prefix,gs_forces=gs_forces,gs_stresses=gs_stresses)
+                  workdir=workdir,corr_algo=corr_algo, prefix=prefix,gs_forces=gs_forces,gs_stresses=gs_stresses)
 
         return new
 
@@ -1600,7 +1607,7 @@ class MlRelaxer(MlBase):
         return filepath
 
     def __init__(self, atoms: Atoms, relax_mode, fmax, pressure, steps, optimizer, nn_name, verbose,
-                 workdir, prefix=None,gs_forces=None,gs_stresses=None):
+                 workdir,corr_algo, prefix=None,gs_forces=None,gs_stresses=None):
         """
         Args:
             atoms: ASE atoms to relax.
@@ -1624,6 +1631,7 @@ class MlRelaxer(MlBase):
         self.verbose = verbose
         self.gs_forces = gs_forces
         self.gs_stresses = gs_stresses
+        self.corr_algo = corr_algo
 
     def to_string(self, verbose=0) -> str:
         """String representation with verbosity level `verbose`."""
@@ -1639,6 +1647,7 @@ class MlRelaxer(MlBase):
      nn_name     = {self.nn_name}
      workdir     = {self.workdir}
      verbose     = {self.verbose}
+     corr_algo   = {self.corr_algo}
 
 === ATOMS ===
 
@@ -1658,15 +1667,22 @@ class MlRelaxer(MlBase):
         """Run structural relaxation."""
         #self.pickle_dump()
         workdir = self.workdir
+        corr_algo= self.corr_algo
         self.atoms.calc = CalcBuilder(self.nn_name).get_calculator()
         # TODO: Here I should add the ab-initio forces/stress to the calculator to correct the ML ones
         ##AA
-        self.atoms.calc.set_correct_forces_algo(CORRALGO.delta)
-        self.atoms.calc.set_correct_stress_algo(CORRALGO.delta)
+        print(f"corr_algo {corr_algo=}")
+        if corr_algo == "delta":
+            print ("AADB: delta correct")
+            self.atoms.calc.set_correct_forces_algo(CORRALGO.delta) #(CORRALGO.delta)
+            self.atoms.calc.set_correct_stress_algo(CORRALGO.delta) #(CORRALGO.delta)
+        else:
+            self.atoms.calc.set_correct_forces_algo(CORRALGO.none) #(CORRALGO.delta)
+            self.atoms.calc.set_correct_stress_algo(CORRALGO.none) #(CORRALGO.delta)
         
         ##AA Print stuff
-        print (f"AADB: gs_forces {self.gs_forces=}");print (f"AADB: gs_stress {self.gs_stresses=}")
-        if self.gs_forces is not None:
+        if self.gs_forces is not None and corr_algo == "delta":
+            print (f"AADB: gs_forces {self.gs_forces=}");print (f"AADB: gs_stress {self.gs_stresses=}")
             self.atoms.calc.store_abi_forstr_atoms(self.gs_forces, self.gs_stresses, self.atoms)
         self.atoms.calc = self.atoms.calc
  
