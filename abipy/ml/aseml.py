@@ -1101,7 +1101,14 @@ class _MyCalculator:
                     dict ={'delta_forces': delta_forces,}
                     with open('delta_forces.json', 'a') as outfile:
                         json.dump(dict, outfile,indent=1,cls=MontyEncoder)
-
+                    #AA FOR delta_foces pass to DFT
+                    # Define the filename where want to save the data
+                    filename = "delta_forces.out"
+                    print("FILE NAME",filename)
+                    # Save the NumPy array to a text file with custom formatting and delimiter
+                    np.savetxt(filename, delta_forces*(1/51.42208619083232), fmt='%.17f', delimiter=' ')
+                    ##AA
+                    
                 elif self.correct_forces_algo == CORRALGO.one_point:
                     forces += abi_forces
                 else:
@@ -1603,6 +1610,11 @@ class MlRelaxer(MlBase):
             fh.write("xred\n")
             for atom in self.atoms:
                 fh.write(fmt_vec3(atom.scaled_position) + "\n")
+            ##AA
+            #fh.write("%i # delta_forces\n")
+            #abi_forces, ml_forces = self.get_abi_ml_forces()
+            #for df in abi_forces:
+            #    fh.write(df)
 
         return filepath
 
