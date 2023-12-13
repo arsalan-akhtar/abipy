@@ -843,6 +843,9 @@ class AseRelaxation:
         df = dataframe_from_results_list(tags, [r0, r1], mode=mode)
         print_dataframe(df, end="\n", file=stream)
         print (f"stress {r1.stress=}")
+        #AA
+        print (f"magmoms {r0.magmoms=}")
+        print (f"magmoms {r1.magmoms=}")
     #def plot(self, **kwargs):
 
 
