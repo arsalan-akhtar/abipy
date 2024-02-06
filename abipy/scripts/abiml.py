@@ -147,6 +147,8 @@ def add_nn_name_opt(f):
     """Add CLI options to select the NN potential."""
     f = click.option("--nn-name", "-nn", default=DEFAULT_NN, show_default=True,
                      help=f"ML potential to be used. Supported values are: {aseml.CalcBuilder.ALL_NN_TYPES}")(f)
+    #f = click.option("--dftd3", , default="no", show_default=True,
+    #                 help=f"Activate DFD3.")(f)
     return f
 
 
@@ -669,7 +671,7 @@ def install(ctx, nn_names, update, verbose):
 @click.option('--num-tests', "-n", default=20, type=int, show_default=True, help='Number of configurations to generate.')
 @click.option("--rattle", default=0.2, type=float, show_default=True, help="Displace atoms randomly with this stdev.")
 @click.option("-srv", "--stdev-rvol", default=0.1, type=float, show_default=True,
-              help="Scale volumes randomly around input v0 with stdev: v0*value")
+              help="Scale volumes randomly around input v0 with stdev: v0 * value")
 @add_workdir_verbose_opts
 @click.option('--config', default='abiml_compare.yml', type=click.Path(), callback=set_default, is_eager=True, expose_value=False)
 def compare(ctx, filepath, nn_names,
@@ -692,17 +694,17 @@ def compare(ctx, filepath, nn_names,
 @click.pass_context
 @click.argument("filepath", type=str)
 @add_nn_name_opt
-@click.option('--config', default='abiml_magmoms.yml', type=click.Path(), callback=set_default, is_eager=True, expose_value=False)
-def magmoms(ctx, filepath, nn_name):
+@add_workdir_verbose_opts
+@click.option('--config', default='abiml_gs.yml', type=click.Path(), callback=set_default, is_eager=True, expose_value=False)
+def gs(ctx, filepath, nn_name,
+       workdir, verbose,
+       ):
     """
-    Compute magnetic moments with ML potential.
+    Compute ground-state properties and magnetic moments with ML potential(s).
     """
     atoms = _get_atoms_from_filepath(filepath)
-    atoms.calc = aseml.CalcBuilder(nn_name).get_calculator()
-    magmoms = atoms.get_magnetic_moments()
-    for ia, (atom, magmoms) in enumerate(zip(atoms, magmoms)):
-        print(atom, magmoms)
-
+    gs = aseml.GsMl(atoms, nn_name, verbose, workdir, prefix="_abiml_gs_")
+    gs.run()
     return 0
 
 
