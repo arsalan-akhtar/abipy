@@ -1370,6 +1370,8 @@ class CalcBuilder:
             if self._model is None:
                 assert self.model_name is None
                 if self.model_path is not None:
+                    #AA
+                    #self._model = CHGNet.from_file(self.model_path,mlp_out_bias=True)
                     self._model = CHGNet.from_file(self.model_path)
                 elif self.model_name is not None:
                     self._model = CHGNet.load(model_name=self.model_name)
