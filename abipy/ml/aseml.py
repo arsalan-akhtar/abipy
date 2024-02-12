@@ -1194,6 +1194,17 @@ class _MyCalculator:
         self.reset()
         ml_forces = self.get_forces(atoms=atoms)
         ml_stress = self.get_stress(atoms=atoms)
+        #AA
+        from ase.stress import voigt_6_to_full_3x3_stress,full_3x3_to_voigt_6_stress
+        print(f"AADB: ml_stress shape={ml_stress.shape}")
+        print(f"AADB: ml_stress={ml_stress}")
+        if ml_stress.shape == (6,) :
+            print(f"AADB: ml_stress shape={ml_stress.shape}")
+            ml_stress = voigt_6_to_full_3x3_stress(ml_stress)
+        #    #ml_stress = full_3x3_to_voigt_6_stress(ml_stress)
+            print(f"AADB: AFTER RESHAPE ml_stress={ml_stress.shape}")
+            print(f"AADB: AFTER RESHAPE ml_stress={ml_stress}")
+
         self.reset()
         self.__ml_forces_list.append(ml_forces)
         self.__ml_stress_list.append(ml_stress)
@@ -1278,12 +1289,24 @@ class _MyCalculator:
         if self.correct_stress_algo != CORRALGO.none:
             if self.__verbose: print(f"Applying ab-initio correction to the ml_stress with {self.correct_stress_algo=}")
             stress = self.results["stress"]
+            #AA
+            from ase.stress import voigt_6_to_full_3x3_stress
+            if stress.shape == (6,) :
+                print(f"AADB: ml_stress shape={stress.shape}")
+                stress = voigt_6_to_full_3x3_stress(stress)
+
+
             abi_stress, ml_stress = self.get_abi_ml_stress()
             if abi_stress is not None:
                 # Change stresses only if have invoked store_abi_forstr_atoms
                 if self.correct_stress_algo == CORRALGO.delta:
                     # Apply delta correction to stress.
                     delta_stress = abi_stress - ml_stress
+                    #AA
+                    print (f"AADB: {stress=}")
+                    print (f"AADB: {abi_stress=}")
+                    print (f"AADB: {ml_stress=}")
+                    print (f"AADB: {delta_stress=}")
                     if self.__verbose > 1: print("Updating stress with delta_stress:\n", delta_stress)
                     stress += delta_stress
                 elif self.correct_stress_algo == CORRALGO.one_point:
@@ -1591,11 +1614,21 @@ class CalcBuilder:
 
             class MyMACECalculator(_MyCalculator, MACECalculator):
                 """Add abi_forces and abi_stress"""
-
-            calc = mace_mp(model="medium",
+            #AA 
+            # FOR TIME BEING To RUN SOME CALC with mace_mp
+            #cls = MyMACECalculator if with_delta else mace_mp #MACECalculator
+            cls = MyMACECalculator if with_delta else MACECalculator
+            self.model_path = os.path.expanduser("/home/akhtar/1-Projects/UCL-Abiml-Project/test-chgnet/mace/mace/calculators/foundations_models/2023-12-03-mace-mp.model")
+            calc = cls(model='medium', model_paths=self.model_path ,device='cpu' )
+            
+            #calc = mace_mp(model="medium",
+            #calc = mace_mp(model="medium",
+            #               cls=cls
                            #dispersion=False, default_dtype="float32", device='cuda'
-                           )
-            #calc.__class__ = MyMACECalculator
+            #               )
+            
+            #calc.__class__ = cls #MyMACECalculator
+            
 
         elif self.nn_type == "nequip":
             try:
@@ -2855,7 +2888,8 @@ class MlValidateWithAbinitio(_MlNebBase):
                 stress_cart_tensors, pressures = hist.reader.read_cart_stress_tensors()
                 for istep, (structure, ene, stress, forces) in enumerate(zip(hist.structures, etotals, stress_cart_tensors, forces_hist)):
                     if not istep in self.traj_range: continue
-                    r = AseResults(atoms=get_atoms(structure), ene=float(ene), forces=forces, stress=stress)
+                    #AA
+                    r = AseResults(atoms=get_atoms(structure), ene=float(ene), forces=forces, stress=stress ,magmoms=None )
                     abi_results.append(r)
                 return abi_results
 
