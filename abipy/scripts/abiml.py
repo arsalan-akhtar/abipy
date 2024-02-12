@@ -234,7 +234,7 @@ def relax(ctx, filepath, nn_name,
     aseml.fix_atoms(atoms, fix_inds=fix_inds, fix_symbols=fix_symbols)
 
     ml_relaxer = aseml.MlRelaxer(atoms, relax_mode, fmax, pressure, steps, optimizer,
-                                 nn_name, verbose, workdir, prefix="_abiml_relax_")
+                                 nn_name, verbose, workdir, corr_algo="delta",  prefix="_abiml_relax_")
 
     print(ml_relaxer.to_string(verbose=verbose))
     ml_relaxer.run()
