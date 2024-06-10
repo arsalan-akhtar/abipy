@@ -1263,7 +1263,63 @@ class _MyCalculator:
                 if self.correct_forces_algo == CORRALGO.delta:
                     # Apply delta correction to forces.
                     alpha = 2.0
-                    delta_forces = (abi_forces - ml_forces)/alpha
+                    #delta_forces = (abi_forces - ml_forces)/alpha
+                    print("NEW GAMMA")
+                    # delta_forces = (abi_forces * np.sqrt((abi_forces)**2 + (ml_forces)**2)   - ml_forces * np.sqrt((abi_forces)**2 + (ml_forces)**2)) #
+                    #delta_forces = (abi_forces   - ml_forces * np.sqrt((abi_forces)**2 + (ml_forces)**2)) #
+                    
+                    #delta_forces = (abi_forces   - ml_forces * ( ml_forces / abi_forces)) # Not Working
+                    #delta_forces = ( ml_forces * ( ml_forces / abi_forces) - abi_forces) # ?! Not Working 
+                    
+                    #delta_forces = (abi_forces   - ml_forces * (abi_forces / ml_forces)) # Worked
+                    #delta_forces = ( ml_forces * (abi_forces / ml_forces) - abi_forces ) # Worked
+                    #delta_forces = - ( ml_forces * (abi_forces / ml_forces)  ) # Worked
+                    
+                    #delta_forces =  ml_forces *  np.sqrt((ml_forces/abi_forces )**2 + (abi_forces/ml_forces )**2 )
+
+                    
+                    #delta_forces = (abi_forces - ml_forces) # Worked
+                    
+                    #delta_forces =  - ml_forces * (abi_forces / ml_forces) # Worked
+                    #delta_forces = abi_forces - abi_forces 
+                    #delta_forces = ml_forces - ml_forces #?!
+                    #delta_forces = ml_forces
+                    delta_forces = -(ml_forces - abi_forces) #/ml_forces
+                    #print(f"abi_ml_corr : {ml_forces + delta_forces = }")
+                    
+                    #--------------------------------------------------------------------------------
+                    # Here making delta forces zero with aid of dft forces where they are less then some tolerance
+                    #tolerance_delta = 0.1 
+                    #new_abi_forces = np.copy(abi_forces)
+                    #norm=np.linalg.norm(abi_forces, axis=1)
+                    
+                    #print(f"{norm =}")
+                    
+                    # Iterate over each row norm and the corresponding row index
+                    #for idx, norm in enumerate(norm):
+                    #    if norm <= tolerance_delta:
+                    #        new_abi_forces[idx, :] = 0  # Set entire row to zero
+                            #print(idx)
+
+                    #delta_forces = (new_abi_forces - ml_forces) # ?! 
+                    #delta_forces_new = (abi_forces - ml_forces) # ?! 
+                    #norm_delta = np.linalg.norm(delta_forces_new,axis =1)
+                    
+                    #for idx, norm in enumerate(norm_delta):
+                    #    if norm <= tolerance_delta:
+                    #        delta_forces_new[idx, :] = 0  # Set entire row to zero
+                    #print(f"{norm_delta =}")
+                    #print(f"{delta_forces_new =}")
+                    #delta_forces = delta_forces_new
+                    #print(f"{new_abi_forces=}")   
+                    
+                    print(f"{ml_forces + delta_forces =}")
+                    print(f"{abi_forces =}")
+
+
+                    #delta_forces = abi_forces - ml_forces * (new_abi_forces/ml_forces)
+
+                    #----------------------------------------------------------------
                     if self.__verbose > 1: print("Updating forces with delta_forces:\n", abi_forces)
                     forces += delta_forces
                     print(f"{delta_forces=}")
@@ -1620,7 +1676,7 @@ class CalcBuilder:
             # FOR TIME BEING To RUN SOME CALC with mace_mp
             #cls = MyMACECalculator if with_delta else mace_mp #MACECalculator
             cls = MyMACECalculator if with_delta else MACECalculator
-            self.model_path = os.path.expanduser("/home/akhtar/1-Projects/UCL-Abiml-Project/test-chgnet/mace/mace/calculators/foundations_models/2023-12-03-mace-mp.model")
+            self.model_path = os.path.expanduser("/home/ucl/modl/aakhtar/scratch_folder/app/chgnet-0.3.0-env-packages/mace/mace/calculators/foundations_models/2023-12-03-mace-mp.model")
             calc = cls(model='medium', model_paths=self.model_path ,device='cpu' )
             
             #calc = mace_mp(model="medium",
@@ -1921,7 +1977,9 @@ class MlRelaxer(MlBase):
             raise ValueError(f"Off diagonal components in strtarget are not supported. {strtarget=}")
 
         # Set internal parameters according to YAML file and build object.
-        fmax, steps, optimizer = 0.01, 500, "BFGS"
+        #fmax, steps, optimizer = 0.01, 5000, "BFGS"
+
+        fmax, steps, optimizer = 0.01, 5000, "BFGS"
 
         #new = cls(atoms, relax_mode, fmax, pressure, steps, optimizer, nn_name, verbose,
         #          workdir=workdir, prefix=prefix)
