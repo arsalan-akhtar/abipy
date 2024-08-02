@@ -402,7 +402,7 @@ class AbinitInput(AbiAbstractInput, MSONable, Has_Structure):
             enforce_typat: Use this value of `typat` (natom array) when converting the structure to Abinit variables.
                 Requires `enforce_typat`.
         """
-        self._spell_check = True
+        self._spell_check = False # AA True
 
         abi_args = [] if abi_args is None else abi_args
         for key, value in abi_args:
