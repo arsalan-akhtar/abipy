@@ -192,6 +192,7 @@ class MlPhonopyWithDDB(MlBase):
                 d_nn[nn_name] = d
                 d_nn[nn_name]["exception"] = None
             except Exception as exc:
+                #raise
                 cprint_traceback()
                 d_nn[nn_name] = {}
                 d_nn[nn_name]["exception"] = str(exc)
@@ -306,7 +307,7 @@ class MlPhonopyWithDDB(MlBase):
         print(mae_str)
         latex_formula = self.abi_phbands.structure.latex_formula
         ph_plotter.combiplot(show=show, title=f"{latex_formula}: {mae_str}", units="meV",
-                             savefig=str(workdir / f"combiplot_{nn_name}.png"))
+                             savefig=str(workdir / f"combiplot_{nn_name}.pdf"))
 
         data = dict(
             mabs_wdiff_ev=mabs_wdiff_ev,
@@ -435,96 +436,39 @@ class MlPhonopy(MlBase):
             #    print("Including dipolar term in phonopy using BECS and eps_inf taken from DDB.")
             #    phonon.nac_params = self.abi_nac_params
 
-        force_constants = phonon.get_force_constants()
-        #from phonopy.file_IO import write_FORCE_CONSTANTS
-        #write_FORCE_CONSTANTS(force_constants, filename=str(self.workdir / f"{nn_name}_FORCE_CONSTANTS"))
-
-        show = False
-        #from abipy.dfpt.phonons import PhononBands, PhononBandsPlotter
-        #with Timer(header="Starting phonopy ph-bands computation...", footer=""):
-        #    phonon.run_band_structure(self.py_qpoints, with_eigenvectors=True)
-
-        #plt = phonon.plot_band_structure()
-        #plt.savefig(workdir / f"phonopy_{nn_name}_phbands.png")
-        #if show: plt.show()
-        #plt.close()
-
         plt = phonon.auto_band_structure(
               npoints=101,
               with_eigenvectors=False,
               with_group_velocities=False,
               plot=True,
-              write_yaml=False,
+              write_yaml=True,
               filename=workdir / f"{nn_name}_band.yml",
         )
         plt.savefig(workdir / f"phonopy_{nn_name}_phbands.png")
-        if show: plt.show()
         plt.close()
 
-        #mesh = [20, 20, 20]
-        #phonon.run_mesh(mesh)
-        #mesh_dict = phonon.get_mesh_dict()
-        #qpoints = mesh_dict['qpoints']
-        #weights = mesh_dict['weights']
-        #frequencies = mesh_dict['frequencies']
-        #eigenvectors = mesh_dict['eigenvectors']
-        #group_velocities = mesh_dict['group_velocities']
+        # Save phonopy object in Yaml format.
+        phonon.save(filename=workdir / f"phonopy_params.yaml", settings={'force_constants': True})
 
-        #phonon.auto_total_dos(plot=True).show()
-        #phonon.auto_projected_dos(plot=True).show()
+        # Compute phonon DOS and generate file with figure.
+        phonon.auto_total_dos(plot=True)
+        plt.savefig(workdir / f"phonopy_{nn_name}_phdos.png")
+        plt.close()
 
-        #phonon.run_mesh([20, 20, 20])
-        #phonon.run_thermal_properties(t_step=10,
-        #                              t_max=1000,
-        #                              t_min=0)
-        #tp_dict = phonon.get_thermal_properties_dict()
-        #temperatures = tp_dict['temperatures']
-        #free_energy = tp_dict['free_energy']
-        #entropy = tp_dict['entropy']
-        #heat_capacity = tp_dict['heat_capacity']
+        # Compute site-project phonon DOS and generate file with figure.
+        phonon.auto_projected_dos(plot=True)
+        plt.savefig(workdir / f"phonopy_{nn_name}_pjdos.png")
+        plt.close()
 
-        #for t, F, S, cv in zip(temperatures, free_energy, entropy, heat_capacity):
+        phonon.run_thermal_properties(t_step=10, t_max=1000, t_min=0)
+        phonon.write_yaml_thermal_properties(filename=workdir / f"phonopy_{nn_name}_thermal_properties.yaml")
+
+        #data = phonon.get_thermal_properties_dict()
+        #for t, F, S, cv in zip(data["temperatures"], data["free_energy"], data["entropy"], data["heat_capacity"]):
         #    print(("%12.3f " + "%15.7f" * 3) % ( t, F, S, cv ))
 
-        #phonon.plot_thermal_properties().show()
-        #bands_dict = phonon.get_band_structure_dict()
-        #nqpt = 0
-        #py_phfreqs, py_displ_cart = [], []
-        #for q_list, w_list, eig_list in zip(bands_dict['qpoints'], bands_dict['frequencies'], bands_dict['eigenvectors']):
-        #    nqpt += len(q_list)
-        #    py_phfreqs.extend(w_list)
-        #    #print(eig_list)
-        #    py_displ_cart.extend(eig_list)
+        phonon.plot_thermal_properties()
+        plt.savefig(workdir / f"phonopy_{nn_name}_thermal_properties.png")
+        plt.close()
 
-        #py_phfreqs = np.reshape(py_phfreqs, (nqpt, 3*natom)) / abu.eV_to_THz
-        #py_displ_cart = np.reshape(py_displ_cart, (nqpt, 3*natom, 3*natom))
-
-        ## Build abipy phonon bands from phonopy results.
-        #py_phbands = PhononBands(self.abi_phbands.structure, self.abi_phbands.qpoints, py_phfreqs,
-        #                         # FIXME: Use phononopy displacement
-        #                         self.abi_phbands.phdispl_cart,
-        #                         non_anal_ph=None,
-        #                         amu=self.abi_phbands.amu,
-        #                         epsinf=self.abi_phbands.epsinf,
-        #                         zcart=self.abi_phbands.zcart,
-        #                         )
-
-        ## Compute diff stats.
-        #mabs_wdiff_ev = np.abs(py_phbands.phfreqs - self.abi_phbands.phfreqs).mean()
-
-        #ph_plotter = PhononBandsPlotter(key_phbands=[
-        #    (f"phonopy with {nn_name}", py_phbands),
-        #    ("ABINIT DDB", self.abi_phbands),
-        #])
-        #mae_str = f"MAE {1000 * mabs_wdiff_ev:.3f} meV"
-        #print(mae_str)
-        #latex_formula = self.abi_phbands.structure.latex_formula
-        #ph_plotter.combiplot(show=show, title=f"{latex_formula}: {mae_str}", units="meV",
-        #                     savefig=str(workdir / f"combiplot_{nn_name}.png"))
-
-        data = dict(
-        #    mabs_wdiff_ev=mabs_wdiff_ev,
-        #    **py_phbands.get_phfreqs_stats_dict()
-        )
-
-        return data
+        return {}

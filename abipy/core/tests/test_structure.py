@@ -205,16 +205,17 @@ xred_symbols
         self.assert_almost_equal(mgb2.lattice.angles, (90.0, 90.0, 120.00000000000001))
         self.assert_almost_equal(mgb2.lattice.volume * abu.Ang_Bohr ** 3, 196.07928976151663)
 
-        si = Structure.from_mpid("mp-149")
-        assert si.formula == "Si2"
-        with self.assertRaises(ValueError):
-            Structure.from_mpid("foobar")
+        if self.test_mprester():
+            si = Structure.from_mpid("mp-149")
+            assert si.formula == "Si2"
+            with self.assertRaises(ValueError):
+                Structure.from_mpid("foobar")
 
-        # Test abiget_spginfo
-        d = si.abiget_spginfo(tolsym=None, pre="abi_")
-        assert d["abi_spg_symbol"] == "Fd-3m"
-        assert d["abi_spg_number"] == 227
-        assert d["abi_bravais"] == "Bravais cF (face-center cubic)"
+            # Test abiget_spginfo
+            d = si.abiget_spginfo(tolsym=None, pre="abi_")
+            assert d["abi_spg_symbol"] == "Fd-3m"
+            assert d["abi_spg_number"] == 227
+            assert d["abi_bravais"] == "Bravais cF (face-center cubic)"
 
         llzo = Structure.from_file(abidata.cif_file("LLZO_oxi.cif"))
         assert llzo.is_ordered
@@ -396,7 +397,7 @@ xred_symbols
         f2p_data = structure.frozen_2phonon(qpoint, 0.05 * displ, 0.02*displ2, eta=0.5, frac_coords=False,
                                             max_supercell=mx_sc, scale_matrix=scale_matrix)
 
-        d_tot = 0.05*displ+0.02*displ2
+        d_tot = 0.05 *displ + 0.02 * displ2
         max_displ = np.linalg.norm(d_tot, axis=1).max()
         self.assert_almost_equal(f2p_data.structure[0].coords,
                                     structure[0].coords + 0.5*d_tot[0]/max_displ)

@@ -5,7 +5,7 @@ lumi Package
    :backlinks: top
 
 :mod:`lumi` Package
-----------------------
+-------------------
 
 .. automodule:: abipy.lumi
    :members:
@@ -21,3 +21,10 @@ lumi Package
    :show-inheritance:
 
 
+:mod:`lineshape` Module
+-----------------------
+
+.. automodule:: abipy.lumi.lineshape
+   :members:
+   :undoc-members:
+   :show-inheritance:

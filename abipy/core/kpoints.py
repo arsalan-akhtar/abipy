@@ -10,11 +10,9 @@ import numpy as np
 
 from itertools import product
 from tabulate import tabulate
-from monty.json import MontyEncoder
 from monty.collections import AttrDict, dict2namedtuple
 from monty.functools import lazy_property
 from monty.string import marquee
-from pymatgen.core.lattice import Lattice
 from abipy.tools.serialization import pmg_serialize
 from abipy.iotools import ETSF_Reader
 from abipy.tools.derivatives import finite_diff
@@ -103,7 +101,6 @@ def issamek(k1, k2, atol=None):
     """
     k1 = np.asarray(k1)
     k2 = np.asarray(k2)
-    #if k1.shape != k2.shape:
 
     return is_integer(k1 - k2, atol=atol)
 
@@ -408,6 +405,42 @@ def map_kpoints(other_kpoints, other_lattice, ref_lattice, ref_kpoints, ref_symr
 #    #return irred_map
 
 
+def kpoints_indices(frac_coords, ngkpt, check_mesh=0) -> np.ndarray:
+    """
+    This function is used when we need to insert k-dependent quantities in a (nx, ny, nz) array.
+    It computes the indices of the k-points assuming these points belong to a mesh with ngkpt divisions.
+
+    Args:
+        frac_coords
+        ngkpt:
+        check_mesh:
+    """
+
+    # Transforms kpt in its corresponding reduced number in the interval [0,1[
+    k_indices = [np.round((kpt % 1) * ngkpt) for kpt in frac_coords]
+    k_indices = np.array(k_indices, dtype=int)
+
+    # Debug secction.
+    if check_mesh:
+        print(f"kpoints_indices: Testing whether k-points belong to the {ngkpt =} mesh")
+        ierr = 0
+        for kpt, inds in zip(frac_coords, k_indices):
+            if check_mesh > 1: print("kpt:", kpt, "inds:", inds)
+            same_k = np.array((inds[0]/ngkpt[0], inds[1]/ngkpt[1], inds[2]/ngkpt[2]))
+            if not issamek(kpt, same_k):
+                ierr += 1; print(kpt, "-->", same_k)
+        if ierr:
+            raise ValueError("Wrong mapping")
+
+        #for kpt, inds in zip(frac_coords, k_indices):
+        #    if np.any(inds >= ngkpt):
+        #        raise ValueError(f"inds >= nkgpt for {kpt=}, {np.round(kpt % 1)=} {inds=})")
+
+        print("Check succesfull!")
+
+    return k_indices
+
+
 def find_irred_kpoints_generic(structure, kfrac_coords, verbose=1):
     """
     Remove the k-points that are connected to each other by one of the
@@ -495,6 +528,7 @@ def kpath_from_bounds_and_ndivsm(bounds, ndivsm, structure):
         for j in range(ndivs[i]):
             p = bounds[i] + j * (bounds[i + 1] - bounds[i]) / ndivs[i]
             path.append(p)
+
     path.append(bounds[-1])
 
     return np.array(path)
@@ -847,6 +881,7 @@ class KpointList(collections.abc.Sequence):
         """
         Makes Kpoints obey the general json interface used in pymatgen for easier serialization.
         """
+        from pymatgen.core.lattice import Lattice
         reciprocal_lattice = Lattice.from_dict(d["reciprocal_lattice"])
         return cls(reciprocal_lattice, d["frac_coords"],
                    weights=d["weights"], names=d["names"], ksampling=d["ksampling"])
@@ -949,7 +984,7 @@ class KpointList(collections.abc.Sequence):
     def __ne__(self, other):
         return not (self == other)
 
-    def index(self, kpoint):
+    def index(self, kpoint) -> int:
         """
         Returns: the first index of kpoint in self.
 
@@ -972,7 +1007,7 @@ class KpointList(collections.abc.Sequence):
             if k == k0: kinds.append(ik)
         return np.array(kinds)
 
-    def find(self, kpoint):
+    def find(self, kpoint) -> int:
         """
         Returns: first index of kpoint. -1 if not found
         """
@@ -1008,7 +1043,7 @@ class KpointList(collections.abc.Sequence):
 
         dist = np.empty(len(self))
         for i, kpt in enumerate(self):
-            dist[i] = kpt.lattice.norm(kpt.frac_coords - frac_coords)
+            dist[i] = float(kpt.lattice.norm(kpt.frac_coords - frac_coords))
 
         ind = dist.argmin()
         return ind, self[ind], np.copy(dist[ind])
@@ -1140,6 +1175,7 @@ class KpointList(collections.abc.Sequence):
         """
         Returns a JSON_ string representation of the MSONable object.
         """
+        from monty.json import MontyEncoder
         return json.dumps(self.as_dict(), cls=MontyEncoder)
 
     def plot(self, ax=None, **kwargs):
@@ -1367,6 +1403,8 @@ class Kpath(KpointList):
             for line in self.lines:
                 vals_on_line = eigens[spin, line, band]
         """
+        if len(self) < 2:
+            return tuple()
         prev = self.versors[0]
         lines = [[0]]
 
@@ -1877,7 +1915,7 @@ class Ktables:
         for ik_bz, ir_gp_id in enumerate(mapping):
             inds = np.where(uniq == ir_gp_id)
             assert len(inds) == 1
-            self.bz2ibz[ik_bz] = inds[0]
+            self.bz2ibz[ik_bz] = int(inds[0])
 
     def __str__(self):
         return self.to_string()

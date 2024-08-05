@@ -575,12 +575,12 @@ class NcDumper(object):
 
 
 _ABBREVS = [
-    (1 << 50, 'Pb'),
-    (1 << 40, 'Tb'),
-    (1 << 30, 'Gb'),
-    (1 << 20, 'Mb'),
-    (1 << 10, 'kb'),
-    (1, 'b'),
+    (1 << 50, 'PB'),
+    (1 << 40, 'TB'),
+    (1 << 30, 'GB'),
+    (1 << 20, 'MB'),
+    (1 << 10, 'kB'),
+    (1, 'B'),
 ]
 
 
@@ -943,7 +943,9 @@ class Has_Header:
     @lazy_property
     def hdr(self):
         """|AttrDict| with the Abinit header e.g. hdr.ecut."""
-        return self.reader.read_abinit_hdr()
+        if hasattr(self, "reader"):
+            return self.reader.read_abinit_hdr()
+        return self.r.read_abinit_hdr()
 
     #def compare_hdr(self, other_hdr):
 

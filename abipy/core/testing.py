@@ -39,7 +39,7 @@ def cmp_version(this: str, other: str, op: str = ">=") -> bool:
     Compare two version strings with the given operator ``op``
     >>> assert cmp_version("1.1.1", "1.1.0") and not cmp_version("1.1.1", "1.1.0", op="==")
     """
-    from pkg_resources import parse_version
+    from packaging.version import parse as parse_version
     from monty.operator import operator_from_str
     op = operator_from_str(op)
     return op(parse_version(this), parse_version(other))
@@ -336,6 +336,12 @@ class AbipyTest(PymatgenTest):
         op = ">="
         if not self.has_abinit(version, op=op):
             raise unittest.SkipTest("This test requires Abinit version %s %s" % (op, version))
+
+    @staticmethod
+    def test_mprester():
+        """Skip MP rester tests."""
+        #raise unittest.SkipTest("MPRester tests have been disabled")
+        return True
 
     @staticmethod
     def has_matplotlib(version: Optional[str] = None, op: str = ">=") -> bool:

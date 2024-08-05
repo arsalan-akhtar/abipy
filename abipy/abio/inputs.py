@@ -472,7 +472,7 @@ class AbinitInput(AbiAbstractInput, MSONable, Has_Structure):
         if len(typat) != len(self.structure):
             raise ValueError("typat contains %d entries while it should be natom: %d" % (len(typat), len(self.structure)))
 
-        ntypat = self.structure.ntypesp
+        ntypat = self.structure.n_elems
         if len(znucl) != ntypat:
             raise ValueError("znucl contains %d entries while it should be ntypat: %d" % (len(znucl), ntypat))
 
@@ -814,6 +814,7 @@ with the Abinit version you are using. Please contact the AbiPy developers.""" %
                 for name in names:
                     value = vars[name]
                     if mnemonics and value is not None:
+                        #print(f"{name=}")
                         app(escape("#### <" + var_database[name].mnemonics + ">"))
 
                     # Build variable, convert to string and append it
@@ -827,11 +828,13 @@ with the Abinit version you are using. Please contact the AbiPy developers.""" %
                 #app("####" + "STRUCTURE".center(w - 1))
                 app("####" + "STRUCTURE".center(w - 1).rstrip())
                 app(w * "#")
+                #print("abivars keys:", self.structure_abivars.keys())
                 for name, value in self.structure_abivars.items():
                     if mnemonics and value is not None:
                         app(escape("#### <" + var_database[name].mnemonics + ">"))
                     vname = name + post
                     if mode == "html": vname = var_database[name].html_link(label=vname)
+                    #print(f"{vname=}, {value=}")
                     app(str(InputVariable(vname, value)))
 
         else:
@@ -1536,7 +1539,7 @@ with the Abinit version you are using. Please contact the AbiPy developers.""" %
                 errmsg = "Number of atoms in the input structure should be %d * %d but found %d" % (
                     numcells, len(self.structure), len(new_structure))
                 raise ValueError(errmsg)
-            
+
             expected_supercell=self.structure.copy()
             expected_supercell.make_supercell(scdims)
 
@@ -4050,6 +4053,7 @@ with the Abinit version you are using. Please contact the AbiPy developers.""" %
             #if mode == "html": vname = root + "#%s" % vname
             if mode == "html": vname = var_database[vname].html_link(label=vname)
             value = format_string_abivars(vname, value, "anaddb")
+            #print("vname:", vname, "value:", value)
             app(str(InputVariable(vname, value)))
 
         return "\n".join(lines) if mode == "text" else "\n".join(lines).replace("\n", "<br>")

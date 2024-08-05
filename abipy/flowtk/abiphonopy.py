@@ -5,13 +5,9 @@ from __future__ import annotations
 import os
 import numpy as np
 
-try:
-    from phonopy import Phonopy, file_IO
-    from phonopy.interface.vasp import read_vasp_from_strings
-    from phonopy.interface.abinit import parse_set_of_forces
-except ImportError:
-    import warnings
-    warnings.warn("phonopy is required by abiphonopy. Install it with conda or pip install phonopy")
+from phonopy import Phonopy, file_IO
+from phonopy.interface.vasp import read_vasp_from_strings
+from phonopy.interface.abinit import parse_set_of_forces
 
 from abipy.core.structure import Structure
 from abipy.flowtk.works import Work
@@ -125,9 +121,10 @@ class PhonopyWork(Work):
         structure.to(filename=self.outdir.path_in("POSCAR"))
 
         # Write yaml file with displacements.
-        supercell = phonon.get_supercell()
-        displacements = phonon.get_displacements()
-        #directions = phonon.get_displacement_directions()
+        #supercell = phonon.get_supercell()
+        supercell = phonon.supercell
+        #displacements = phonon.get_displacements()
+        displacements = phonon.displacements
         file_IO.write_disp_yaml(displacements, supercell, # directions=directions,
                                 filename=self.outdir.path_in('disp.yaml'))
 
