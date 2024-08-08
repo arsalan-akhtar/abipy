@@ -1843,9 +1843,10 @@ class CalcBuilder:
                 raise ImportError ("SevenNet not installed. USE: pip install sevenn ")
             
             class MySevenNetCalculator(_MyCalculator, SevenNetCalculator):
+                """add abi_forces and abi_stress """   
 
             cls = MySevenNetCalculator if with_delta else SevenNetCalculator
-            calc = cls(model="7net-0_11July2024",device="cpu",  **self.calc_kwargs)
+            calc = cls(model="7net-0_11July2024", device="cpu",  **self.calc_kwargs)
 
 
         else:
