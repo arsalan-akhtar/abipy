@@ -1578,6 +1578,7 @@ class CalcBuilder:
         "nequip",
         "metatensor",
         "deepmd",
+        "sevenn",
     ]
 
     def __init__(self, name: str, dftd3_args=None, **kwargs):
@@ -1855,6 +1856,20 @@ class CalcBuilder:
 
             cls = MyDpCalculator if with_delta else DP
             calc = cls(self.model_path, **self.calc_kwargs)
+
+        #AA Adding SevenNN
+        elif self.nn_type == "sevenn":
+            try:
+                from sevenn.sevennet_calculator import SevenNetCalculator
+            except ImportError as exc:
+                raise ImportError ("SevenNet not installed. USE: pip install sevenn ")
+            
+            class MySevenNetCalculator(_MyCalculator, SevenNetCalculator):
+                """add abi_forces and abi_stress """   
+
+            cls = MySevenNetCalculator if with_delta else SevenNetCalculator
+            calc = cls(model="7net-0_11July2024", device="cpu",  **self.calc_kwargs)
+
 
         else:
             raise ValueError(f"Invalid {self.nn_type=}")
