@@ -1211,7 +1211,8 @@ class _MyCalculator:
         self.__ml_forces_list = deque(maxlen=maxlen)
         self.__ml_stress_list = deque(maxlen=maxlen)
         self.__verbose = 0
-
+        self._aacounter_force = 0 #AA
+        self._aacounter_stress = 0 #AA
     def set_correct_forces_algo(self, new_algo: int) -> int:
         """Set the correction algorithm for forces."""
         assert new_algo in CORRALGO
@@ -1315,6 +1316,16 @@ class _MyCalculator:
         """
         #print("In super.calculate")
         super().calculate(atoms=atoms, properties=properties, system_changes=system_changes)
+        
+        # AA
+        #abi_forces, ml_forces = self.get_abi_ml_forces()
+        #forces = self.results["forces"]
+        #print("================================================")
+        #print(f"{forces                   =}")
+        #print(f"{abi_forces               =}")
+
+
+        #AA
 
         if self.correct_forces_algo != CORRALGO.none:
             if self.__verbose: print(f"Applying ab-initio correction to the ml_forces with {self.correct_forces_algo=}")
@@ -1323,35 +1334,24 @@ class _MyCalculator:
             if abi_forces is not None:
                 # Change forces only if have invoked store_abi_forstr_atoms
                 if self.correct_forces_algo == CORRALGO.delta:
-                    # Apply delta correction to forces.
-                    alpha = 2.0
-                    #delta_forces = (abi_forces - ml_forces)/alpha
-                    print("NEW GAMMA")
-                    # delta_forces = (abi_forces * np.sqrt((abi_forces)**2 + (ml_forces)**2)   - ml_forces * np.sqrt((abi_forces)**2 + (ml_forces)**2)) #
-                    #delta_forces = (abi_forces   - ml_forces * np.sqrt((abi_forces)**2 + (ml_forces)**2)) #
-                    
-                    #delta_forces = (abi_forces   - ml_forces * ( ml_forces / abi_forces)) # Not Working
-                    #delta_forces = ( ml_forces * ( ml_forces / abi_forces) - abi_forces) # ?! Not Working 
-                    
-                    #delta_forces = (abi_forces   - ml_forces * (abi_forces / ml_forces)) # Worked
-                    #delta_forces = ( ml_forces * (abi_forces / ml_forces) - abi_forces ) # Worked
-                    #delta_forces = - ( ml_forces * (abi_forces / ml_forces)  ) # Worked
-                    
-                    #delta_forces =  ml_forces *  np.sqrt((ml_forces/abi_forces )**2 + (abi_forces/ml_forces )**2 )
 
-                    
-                    #delta_forces = (abi_forces - ml_forces) # Worked
-                    
-                    #delta_forces =  - ml_forces * (abi_forces / ml_forces) # Worked
-                    #delta_forces = abi_forces - abi_forces 
-                    #delta_forces = ml_forces - ml_forces #?!
-                    #delta_forces = ml_forces
-                    delta_forces = -(ml_forces - abi_forces) #/ml_forces
-                    #print(f"abi_ml_corr : {ml_forces + delta_forces = }")
-                    
+                    #delta_forces = -(ml_forces - abi_forces) #/ml_forces                    
+                    # Apply delta correction to forces.
+                    #----------------------------------------------------------
+                    if self._aacounter_force == 0: #in (0,1,2):
+                       delta_forces = -(ml_forces - abi_forces) #/ml_forces
+                    else:
+                       #tolerance_delta = 0.05 
+                       #delta_forces[np.abs(delta_forces) < tolerance_delta ] = 0
+                       delta_forces = -(ml_forces - abi_forces)* 0.0
+                    print(f"{self._aacounter_force=}")
+                    self._aacounter_force += 1 
                     #--------------------------------------------------------------------------------
                     # Here making delta forces zero with aid of dft forces where they are less then some tolerance
-                    #tolerance_delta = 0.1 
+                    
+                    print(f"{delta_forces=}")                    
+                    
+
                     #new_abi_forces = np.copy(abi_forces)
                     #norm=np.linalg.norm(abi_forces, axis=1)
                     
@@ -1361,8 +1361,8 @@ class _MyCalculator:
                     #for idx, norm in enumerate(norm):
                     #    if norm <= tolerance_delta:
                     #        new_abi_forces[idx, :] = 0  # Set entire row to zero
-                            #print(idx)
-
+                    #        print(f"{idx=},{norm=}")
+                    #print(f"{new_abi_forces=}")
                     #delta_forces = (new_abi_forces - ml_forces) # ?! 
                     #delta_forces_new = (abi_forces - ml_forces) # ?! 
                     #norm_delta = np.linalg.norm(delta_forces_new,axis =1)
@@ -1374,9 +1374,12 @@ class _MyCalculator:
                     #print(f"{delta_forces_new =}")
                     #delta_forces = delta_forces_new
                     #print(f"{new_abi_forces=}")   
-                    
-                    print(f"{ml_forces + delta_forces =}")
-                    print(f"{abi_forces =}")
+                    #print("================================================")
+                    print(f"{forces=}") 
+                    print(f"{ml_forces=}") 
+                    print(f"{delta_forces=}")
+                    print(f"{ml_forces + delta_forces=}")
+                    print(f"{abi_forces=}")
 
 
                     #delta_forces = abi_forces - ml_forces * (new_abi_forces/ml_forces)
@@ -1384,7 +1387,9 @@ class _MyCalculator:
                     #----------------------------------------------------------------
                     if self.__verbose > 1: print("Updating forces with delta_forces:\n", abi_forces)
                     forces += delta_forces
-                    print(f"{delta_forces=}")
+                    #forces = delta_forces
+                    #print(f"After Update {forces     =}")
+                    #print("================================================")
                     #AA: TODO: save the delta in list and call method...
                     dict = {'delta_forces': delta_forces,}
                     with open('delta_forces.json', 'a') as outfile:
@@ -1392,7 +1397,7 @@ class _MyCalculator:
                     ##AA FOR delta_foces pass to DFT
                     # Define the filename where want to save the data
                     filename = "delta_forces.out"
-                    print("FILE NAME",filename)
+                    #print("FILE NAME",filename)
                     # Save the NumPy array to a text file with custom formatting and delimiter
                     np.savetxt(filename, delta_forces*(1/51.42208619083232), fmt='%.17f', delimiter=' ')
                     ##AA
@@ -1419,12 +1424,29 @@ class _MyCalculator:
                 # Change stresses only if have invoked store_abi_forstr_atoms
                 if self.correct_stress_algo == CORRALGO.delta:
                     # Apply delta correction to stress.
-                    delta_stress = abi_stress - ml_stress
+                    #delta_stress = abi_stress - ml_stress
+                    #delta_stress = -(abi_stress - ml_stress)
+                    #delta_stress = -(ml_stress - abi_stress)
+                    #------------------------------------------------------
+                    if self._aacounter_stress == 0 : #in (0,1,2):
+                       delta_stress = -(ml_stress - abi_stress)
+                    else:
+                       delta_stress = -(ml_stress - abi_stress) * 0.0
+                    print(f"{self._aacounter_stress=}") # AA        
+                    self._aacounter_stress += 1 #AA
+
+                    #delta_stress = -( - abi_stress) * 0.0
+                    #tolerance_delta_stress = 0.05
+                    #print(f"AADB: Before {delta_stress=}")                    
+                    #delta_stress[np.abs(delta_stress) < tolerance_delta_stress ] = 0
+
+
                     #AA
                     print (f"AADB: {stress=}")
-                    print (f"AADB: {abi_stress=}")
                     print (f"AADB: {ml_stress=}")
                     print (f"AADB: {delta_stress=}")
+                    print (f"AADB: {abi_stress=}")
+                    print (f"AADB: {ml_stress+delta_stress =}")
                     if self.__verbose > 1: print("Updating stress with delta_stress:\n", delta_stress)
                     stress += delta_stress
                 elif self.correct_stress_algo == CORRALGO.one_point:
