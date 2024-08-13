@@ -1335,23 +1335,23 @@ class _MyCalculator:
                 # Change forces only if have invoked store_abi_forstr_atoms
                 if self.correct_forces_algo == CORRALGO.delta:
 
-                    #delta_forces = -(ml_forces - abi_forces) #/ml_forces                    
+                    delta_forces = -(ml_forces - abi_forces) #/ml_forces                    
+                    #tolerance_delta = 0.01 
+                    #delta_forces[np.abs(delta_forces) < tolerance_delta ] = 0
                     # Apply delta correction to forces.
                     #----------------------------------------------------------
-                    if self._aacounter_force == 0: #in (0,1,2):
-                       delta_forces = -(ml_forces - abi_forces) #/ml_forces
-                    else:
+                    #if self._aacounter_force == 0: #in (0,1,2):
+                    #   delta_forces = -(ml_forces - abi_forces) #/ml_forces
+                    #else:
                        #tolerance_delta = 0.05 
                        #delta_forces[np.abs(delta_forces) < tolerance_delta ] = 0
-                       delta_forces = -(ml_forces - abi_forces)* 0.0
-                    print(f"{self._aacounter_force=}")
-                    self._aacounter_force += 1 
+                    #   delta_forces = -(ml_forces - abi_forces)* 0.0
+                    #print(f"{self._aacounter_force=}")
+                    #self._aacounter_force += 1 
                     #--------------------------------------------------------------------------------
                     # Here making delta forces zero with aid of dft forces where they are less then some tolerance
                     
                     print(f"{delta_forces=}")                    
-                    
-
                     #new_abi_forces = np.copy(abi_forces)
                     #norm=np.linalg.norm(abi_forces, axis=1)
                     
@@ -1426,14 +1426,16 @@ class _MyCalculator:
                     # Apply delta correction to stress.
                     #delta_stress = abi_stress - ml_stress
                     #delta_stress = -(abi_stress - ml_stress)
-                    #delta_stress = -(ml_stress - abi_stress)
+                    delta_stress = -(ml_stress - abi_stress)
+                    #tolerance_delta_stress = 0.01
+                    #delta_stress[np.abs(delta_stress) < tolerance_delta_stress ] = 0
                     #------------------------------------------------------
-                    if self._aacounter_stress == 0 : #in (0,1,2):
-                       delta_stress = -(ml_stress - abi_stress)
-                    else:
-                       delta_stress = -(ml_stress - abi_stress) * 0.0
-                    print(f"{self._aacounter_stress=}") # AA        
-                    self._aacounter_stress += 1 #AA
+                    #if self._aacounter_stress == 0 : #in (0,1,2):
+                    #   delta_stress = -(ml_stress - abi_stress)
+                    #else:
+                    #   delta_stress = -(ml_stress - abi_stress) * 0.0
+                    #print(f"{self._aacounter_stress=}") # AA        
+                    #self._aacounter_stress += 1 #AA
 
                     #delta_stress = -( - abi_stress) * 0.0
                     #tolerance_delta_stress = 0.05
@@ -2070,7 +2072,7 @@ class MlRelaxer(MlBase):
         xred = np.array(xred[:,:3], dtype=float)
         # Read forces and stress in a.u. and convert.
         abi_cart_forces = np.array(doc.pop("cartesian_forces")) * abu.Ha_eV / abu.Bohr_Ang
-        abi_cart_stresses = np.array(doc.pop("cartesian_stress_tensor")) * abu.Ha_eV / (abu.Bohr_Ang**3)
+        abi_cart_stresses = np.array(doc.pop("cartesian_stress_tensor")) * (abu.Ha_eV / (abu.Bohr_Ang**3))
 
         ionmov = doc.pop("ionmov")
         optcell = doc.pop("optcell")
