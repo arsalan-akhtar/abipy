@@ -1210,6 +1210,8 @@ class _MyCalculator:
         self.__abi_atoms_list = deque(maxlen=maxlen)
         self.__ml_forces_list = deque(maxlen=maxlen)
         self.__ml_stress_list = deque(maxlen=maxlen)
+        self.__abi_energies_list = deque(maxlen=maxlen) ##AA
+        self.__ml_energies_list = deque(maxlen=maxlen) ##AA
         self.__verbose = 0
         self._aacounter_force = 0 #AA
         self._aacounter_stress = 0 #AA
@@ -1237,7 +1239,12 @@ class _MyCalculator:
         """Correction algorithm for the stress."""
         return self.__correct_stress_algo
 
-    def store_abi_forstr_atoms(self, abi_forces, abi_stress, atoms):
+    #@property
+    #def correct_energies_algo(self)-> int:
+
+
+
+    def store_abi_forstr_atoms(self, abi_forces, abi_stress, atoms, abi_energy=None):
         """
         Stores a copy of the ab-initio forces, stress tensor and atoms
         in the internal buffers. Also compute and store the corresponding ML values.
@@ -1248,6 +1255,15 @@ class _MyCalculator:
         abi_stress = np.asarray(abi_stress).copy()
         self.__abi_stress_list.append(abi_stress)
         self.__abi_atoms_list.append(atoms.copy())
+        
+        abi_energy = np.asarray(abi_energy).copy()
+        self.__abi_energies_list.append(abi_energy)
+        #print(f"{self.__abi_energies_list=}")
+
+
+        #print(f"{self.get_potential_energy(atoms=atoms)=}")
+        #self.__ml_energies_list = atoms.get_potential_energy() #self.get_potential_energy(atoms=atoms)
+        #print(f"AADB:{self.__ml_energies_list=}")
 
         # Compute ML forces and stresses for the input atoms.
         old_forces_algo = self.set_correct_forces_algo(CORRALGO.none)
@@ -1255,7 +1271,10 @@ class _MyCalculator:
         self.reset()
         ml_forces = self.get_forces(atoms=atoms)
         ml_stress = self.get_stress(atoms=atoms)
+        
         #AA
+        ml_energy = self.get_potential_energy(atoms=atoms)
+        self.__ml_energies_list.append(ml_energy)
         #from ase.stress import voigt_6_to_full_3x3_stress,full_3x3_to_voigt_6_stress
         #print(f"AADB: ml_stress shape={ml_stress.shape}")
         #print(f"AADB: ml_stress={ml_stress}")
@@ -1297,7 +1316,12 @@ class _MyCalculator:
         """Return the ab-initio and the ML stress or (None, None) if not available."""
         if not self.__abi_stress_list: return (None, None)
         return self.__abi_stress_list[pos], self.__ml_stress_list[pos]
-
+    #AA
+    def get_abi_ml_energies(self, pos=-1):
+        """Return the ab-initio and the ML stress or (None, None) if not available."""
+        if not self.__abi_energies_list: return (None, None)
+        return self.__abi_energies_list[pos], self.__ml_energies_list[pos]
+    
     def calculate(
          self,
          atoms: Atoms | None = None,
@@ -1330,14 +1354,30 @@ class _MyCalculator:
         if self.correct_forces_algo != CORRALGO.none:
             if self.__verbose: print(f"Applying ab-initio correction to the ml_forces with {self.correct_forces_algo=}")
             forces = self.results["forces"]
+            abi_energy , ml_energy = self.get_abi_ml_energies() #AA
+            if abi_energy is not None:
+                energy = self.results['energy'] #AA
+                #print(f"{energy=}") #AA
+                delta_energy = ( abi_energy - ml_energy )
+                #delta_energy = -(ml_energy - abi_energy)
+                #print(f"{abi_energy=}") #AA
+                #print(f"{ml_energy=}") #AA
+                #print(f"{delta_energy+ml_energy=}")
+                #print(f"{delta_energy=}")
+
+                #energy += delta_energy
+                #self.results.update(energy=energy)
+
             abi_forces, ml_forces = self.get_abi_ml_forces()
             if abi_forces is not None:
                 # Change forces only if have invoked store_abi_forstr_atoms
                 if self.correct_forces_algo == CORRALGO.delta:
 
-                    delta_forces = -(ml_forces - abi_forces) #/ml_forces                    
-                    #tolerance_delta = 0.01 
-                    #delta_forces[np.abs(delta_forces) < tolerance_delta ] = 0
+                    delta_forces = -(ml_forces - abi_forces)
+                    #delta_forces = (ml_forces - abi_forces)
+
+                    tolerance_delta = 0.1
+                    #delta_forces[np.abs(delta_forces) <= tolerance_delta ] = 0.0
                     # Apply delta correction to forces.
                     #----------------------------------------------------------
                     #if self._aacounter_force == 0: #in (0,1,2):
@@ -1351,7 +1391,7 @@ class _MyCalculator:
                     #--------------------------------------------------------------------------------
                     # Here making delta forces zero with aid of dft forces where they are less then some tolerance
                     
-                    print(f"{delta_forces=}")                    
+                    #print(f"{delta_forces=}")                    
                     #new_abi_forces = np.copy(abi_forces)
                     #norm=np.linalg.norm(abi_forces, axis=1)
                     
@@ -1375,11 +1415,11 @@ class _MyCalculator:
                     #delta_forces = delta_forces_new
                     #print(f"{new_abi_forces=}")   
                     #print("================================================")
-                    print(f"{forces=}") 
-                    print(f"{ml_forces=}") 
+                    #print(f"{forces=}") 
+                    #print(f"{ml_forces=}") 
                     print(f"{delta_forces=}")
-                    print(f"{ml_forces + delta_forces=}")
-                    print(f"{abi_forces=}")
+                    #print(f"{ml_forces + delta_forces=}")
+                    #print(f"{abi_forces=}")
 
 
                     #delta_forces = abi_forces - ml_forces * (new_abi_forces/ml_forces)
@@ -1424,11 +1464,10 @@ class _MyCalculator:
                 # Change stresses only if have invoked store_abi_forstr_atoms
                 if self.correct_stress_algo == CORRALGO.delta:
                     # Apply delta correction to stress.
-                    #delta_stress = abi_stress - ml_stress
-                    #delta_stress = -(abi_stress - ml_stress)
-                    delta_stress = -(ml_stress - abi_stress)
-                    #tolerance_delta_stress = 0.01
-                    #delta_stress[np.abs(delta_stress) < tolerance_delta_stress ] = 0
+                    delta_stress = -(ml_stress - abi_stress) ## AA ALL MY Caclculations
+                    #delta_stress = (ml_stress - abi_stress) #
+                    tolerance_delta_stress = 0.1
+                    #delta_stress[np.abs(delta_stress) <= tolerance_delta_stress ] = 0
                     #------------------------------------------------------
                     #if self._aacounter_stress == 0 : #in (0,1,2):
                     #   delta_stress = -(ml_stress - abi_stress)
@@ -1444,11 +1483,11 @@ class _MyCalculator:
 
 
                     #AA
-                    print (f"AADB: {stress=}")
-                    print (f"AADB: {ml_stress=}")
+                    #print (f"AADB: {stress=}")
+                    #print (f"AADB: {ml_stress=}")
                     print (f"AADB: {delta_stress=}")
-                    print (f"AADB: {abi_stress=}")
-                    print (f"AADB: {ml_stress+delta_stress =}")
+                    #print (f"AADB: {abi_stress=}")
+                    #print (f"AADB: {ml_stress+delta_stress =}")
                     if self.__verbose > 1: print("Updating stress with delta_stress:\n", delta_stress)
                     stress += delta_stress
                 elif self.correct_stress_algo == CORRALGO.one_point:
@@ -2073,6 +2112,7 @@ class MlRelaxer(MlBase):
         # Read forces and stress in a.u. and convert.
         abi_cart_forces = np.array(doc.pop("cartesian_forces")) * abu.Ha_eV / abu.Bohr_Ang
         abi_cart_stresses = np.array(doc.pop("cartesian_stress_tensor")) * (abu.Ha_eV / (abu.Bohr_Ang**3))
+        abi_energies = np.array(doc.pop("etotal")) #* abu.Ha_eV
 
         ionmov = doc.pop("ionmov")
         optcell = doc.pop("optcell")
@@ -2119,7 +2159,7 @@ class MlRelaxer(MlBase):
         # Set internal parameters according to YAML file and build object.
         #fmax, steps, optimizer = 0.01, 5000, "BFGS"
 
-        fmax, steps, optimizer = 0.01, 5000, "BFGS"
+        fmax, steps, optimizer = 0.01, 5000, "LBFGS"
 
         #new = cls(atoms, relax_mode, fmax, pressure, steps, optimizer, nn_name, verbose,
         #          workdir=workdir, prefix=prefix)
@@ -2128,17 +2168,18 @@ class MlRelaxer(MlBase):
         ## AA
         gs_forces = abi_cart_forces
         gs_stresses = abi_cart_stresses
-        
-        print (f"AADB: {gs_forces=}")
-
+        gs_energies = abi_energies
+        corr_algo = doc.pop("corr_algo")
         #corr_algo = CORRALGO.from_string(corr_algo)
         #corr_algo=corr_algo
-        corr_algo = doc.pop("corr_algo")
-        print (f"AADB: {corr_algo=}")
+        #print (f"AADB: {corr_algo=}")
+        #print (f"AADB: {gs_energies=}")
+        #print (f"AADB: {gs_forces=}")       
+        #print (f"AADB: {gs_stresses=}")
         
 
         new = cls(atoms, relax_mode, fmax, pressure, steps, optimizer, nn_name, verbose,
-                  workdir=workdir,corr_algo=corr_algo, prefix=prefix,gs_forces=gs_forces,gs_stresses=gs_stresses)
+                  workdir=workdir,corr_algo=corr_algo, prefix=prefix,gs_forces=gs_forces,gs_stresses=gs_stresses,gs_energies=gs_energies)
 
         return new
 
@@ -2174,7 +2215,7 @@ class MlRelaxer(MlBase):
         return filepath
 
     def __init__(self, atoms: Atoms, relax_mode, fmax, pressure, steps, optimizer, nn_name, verbose,
-                 workdir,corr_algo, prefix=None,gs_forces=None,gs_stresses=None):
+                 workdir,corr_algo, prefix=None,gs_forces=None,gs_stresses=None,gs_energies=None):
         """
         Args:
             atoms: ASE atoms to relax.
@@ -2198,6 +2239,7 @@ class MlRelaxer(MlBase):
         self.verbose = verbose
         self.gs_forces = gs_forces
         self.gs_stresses = gs_stresses
+        self.gs_energies = gs_energies #AA
         self.corr_algo = corr_algo
 
     def to_string(self, verbose=0) -> str:
@@ -2228,6 +2270,9 @@ class MlRelaxer(MlBase):
 
 {self.gs_stresses}
 
+=== GS Energy ===
+
+{self.gs_energies}
 """
 
     def run(self):
@@ -2249,7 +2294,8 @@ class MlRelaxer(MlBase):
         ##AA Print stuff
         if self.gs_forces is not None and corr_algo == "delta":
             print (f"AADB: gs_forces {self.gs_forces=}");print (f"AADB: gs_stress {self.gs_stresses=}")
-            self.atoms.calc.store_abi_forstr_atoms(self.gs_forces, self.gs_stresses, self.atoms)
+            #self.atoms.calc.store_abi_forstr_atoms(self.gs_forces, self.gs_stresses, self.atoms)
+            self.atoms.calc.store_abi_forstr_atoms(self.gs_forces, self.gs_stresses, self.atoms,self.gs_energies)
         self.atoms.calc = self.atoms.calc
  
         ##AA DONE
