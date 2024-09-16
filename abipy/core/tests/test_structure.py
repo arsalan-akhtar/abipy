@@ -222,6 +222,8 @@ xred_symbols
         d = llzo.abiget_spginfo(tolsym=0.001)
         assert d["spg_number"] == 142
 
+        # Temporarily disables ad webserver is down.
+        #if self.is_url_reachable("www.crystallography.net"):
         mgb2_cod = Structure.from_cod_id(1526507, primitive=True)
         assert mgb2_cod.formula == "Mg1 B2"
         assert mgb2_cod.spget_lattice_type() == "hexagonal"
