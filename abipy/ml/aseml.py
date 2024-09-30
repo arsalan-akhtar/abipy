@@ -1833,7 +1833,7 @@ class CalcBuilder:
             class MyMACECalculator(_MyCalculator, MACECalculator):
                 """Add abi_forces and abi_stress"""
 
-            #print("Using MACE model_path:", self.model_path)
+            print("Using MACE model_path:", self.model_path)
             if self.model_path is None:
                 raise RuntimeError("MACECalculator requires model_path e.g. nn_name='mace@FILEPATH'")
 
@@ -1855,7 +1855,8 @@ class CalcBuilder:
             cls = MyMACECalculator if with_delta else MACECalculator
             #self.model_path = os.path.expanduser("/home/ucl/modl/aakhtar/scratch_folder/app/chgnet-0.3.0-env-packages/mace/mace/calculators/foundations_models/2023-12-03-mace-mp.model")
             self.model_path = os.path.expanduser("/home/akhtar/2-Areas/Miniconda3-apps-abinit/mace/mace/calculators/foundations_models/2023-12-03-mace-mp.model")
-            calc = cls(model='medium', model_paths=self.model_path ,device='cpu' )
+            #self.model_path = os.path.expanduser("/home/akhtar/2-Areas/Miniconda3-apps-abinit/mace/mace/calculators/foundations_models/ani500k_large_CC.model")
+            calc = cls(model='medium', model_paths=self.model_path ,device="cpu" )
             
             #calc = mace_mp(model="medium",
             #calc = mace_mp(model="medium",
@@ -1956,8 +1957,7 @@ class CalcBuilder:
 
             cls = MySevenNetCalculator if with_delta else SevenNetCalculator
             calc = cls(model="7net-0_11July2024", device="cpu",  **self.calc_kwargs)
-
-                raise ImportError("sevenn not installed. See https://github.com/MDIL-SNU/SevenNet") from exc
+            #raise ImportError("sevenn not installed. See https://github.com/MDIL-SNU/SevenNet") from exc
 
             class MySevenNetCalculator(_MyCalculator, SevenNetCalculator):
                 """Add abi_forces and abi_stress"""
@@ -1972,7 +1972,7 @@ class CalcBuilder:
             model_name = "SevenNet-0" if self.model_name is None else self.model_name
             cls = MySevenNetCalculator if with_delta else SevenNetCalculator
             calc = MySevenNetCalculator(model=model_name, **self.calc_kwargs)
->>>>>>> 7df0777550d749a959b62d1faa491bef7c5b4866
+
 
         else:
             raise ValueError(f"Invalid {self.nn_type=}")
@@ -2208,7 +2208,7 @@ class MlRelaxer(MlBase):
         ######################################################################
         relax_mode = RX_MODE.cell if optcell != 0 else RX_MODE.ions
 
-        allowed_optcells = (0, 2)
+        allowed_optcells = (0,1,2)
         if optcell not in allowed_optcells:
             raise ValueError(f"{optcell=} not in {allowed_optcells=}")
 
