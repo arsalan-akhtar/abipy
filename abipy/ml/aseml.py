@@ -1185,8 +1185,8 @@ class CORRALGO(IntEnum):
     """
     none = 0
     delta = 1
-    one_point = 2
-    #two_points = 3
+    delta_beta = 2
+    delta_beta_per_component = 3
 
     @classmethod
     def from_string(cls, string: str):
@@ -1359,6 +1359,7 @@ class _MyCalculator:
         #AA
 
         if self.correct_forces_algo != CORRALGO.none:
+            # print(f"{self.__verbose=}")
             if self.__verbose: print(f"Applying ab-initio correction to the ml_forces with {self.correct_forces_algo=}")
             forces = self.results["forces"]
             abi_energy , ml_energy = self.get_abi_ml_energies() #AA
@@ -1379,82 +1380,40 @@ class _MyCalculator:
             if abi_forces is not None:
                 # Change forces only if have invoked store_abi_forstr_atoms
                 if self.correct_forces_algo == CORRALGO.delta:
-
-                    delta_forces = -(ml_forces - abi_forces)
-                    #delta_forces = (ml_forces - abi_forces)
-
-                    tolerance_delta = 0.1
-                    #delta_forces[np.abs(delta_forces) <= tolerance_delta ] = 0.0
-                    # Apply delta correction to forces.
-                    #----------------------------------------------------------
-                    #if self._aacounter_force == 0: #in (0,1,2):
-                    #   delta_forces = -(ml_forces - abi_forces) #/ml_forces
-                    #else:
-                       #tolerance_delta = 0.05 
-                       #delta_forces[np.abs(delta_forces) < tolerance_delta ] = 0
-                    #   delta_forces = -(ml_forces - abi_forces)* 0.0
-                    #print(f"{self._aacounter_force=}")
-                    #self._aacounter_force += 1 
-                    #--------------------------------------------------------------------------------
-                    # Here making delta forces zero with aid of dft forces where they are less then some tolerance
-                    
-                    #print(f"{delta_forces=}")                    
-                    #new_abi_forces = np.copy(abi_forces)
-                    #norm=np.linalg.norm(abi_forces, axis=1)
-                    
-                    #print(f"{norm =}")
-                    
-                    # Iterate over each row norm and the corresponding row index
-                    #for idx, norm in enumerate(norm):
-                    #    if norm <= tolerance_delta:
-                    #        new_abi_forces[idx, :] = 0  # Set entire row to zero
-                    #        print(f"{idx=},{norm=}")
-                    #print(f"{new_abi_forces=}")
-                    #delta_forces = (new_abi_forces - ml_forces) # ?! 
-                    #delta_forces_new = (abi_forces - ml_forces) # ?! 
-                    #norm_delta = np.linalg.norm(delta_forces_new,axis =1)
-                    
-                    #for idx, norm in enumerate(norm_delta):
-                    #    if norm <= tolerance_delta:
-                    #        delta_forces_new[idx, :] = 0  # Set entire row to zero
-                    #print(f"{norm_delta =}")
-                    #print(f"{delta_forces_new =}")
-                    #delta_forces = delta_forces_new
-                    #print(f"{new_abi_forces=}")   
-                    #print("================================================")
-                    #print(f"{forces=}") 
-                    #print(f"{ml_forces=}") 
-                    print(f"{delta_forces=}")
-                    #print(f"{ml_forces + delta_forces=}")
-                    #print(f"{abi_forces=}")
-
-
-                    #delta_forces = abi_forces - ml_forces * (new_abi_forces/ml_forces)
-
-                    #----------------------------------------------------------------
+                    # print("Correction delta")
+                    beta_forces = 1.0  # Choose an appropriate value between 0 and 1
+                    delta_forces = beta_forces * (abi_forces - ml_forces) 
+                    formatted_print_box(delta_forces=delta_forces,ml_forces=ml_forces,abi_forces=abi_forces)
                     if self.__verbose > 1: print("Updating forces with delta_forces:\n", abi_forces)
                     forces += delta_forces
-                    #forces = delta_forces
-                    #print(f"After Update {forces     =}")
-                    #print("================================================")
                     #AA: TODO: save the delta in list and call method...
-                    dict = {'delta_forces': delta_forces,}
+                    dict = {'delta_forces': delta_forces}
                     with open('delta_forces.json', 'a') as outfile:
                         json.dump(dict, outfile,indent=1,cls=MontyEncoder)
-                    ##AA FOR delta_foces pass to DFT
-                    # Define the filename where want to save the data
-                    filename = "delta_forces.out"
-                    #print("FILE NAME",filename)
-                    # Save the NumPy array to a text file with custom formatting and delimiter
-                    np.savetxt(filename, delta_forces*(1/51.42208619083232), fmt='%.17f', delimiter=' ')
-                    ##AA
                     
-                elif self.correct_forces_algo == CORRALGO.one_point:
-                    forces += abi_forces
+                elif self.correct_forces_algo == CORRALGO.delta_beta:
+                    print("Correction delta_beta")
+                    delta_forces = compute_delta_forces(abi_forces, ml_forces, error_min=0.01, error_max=0.05, epsilon=1e-8)
+                    formatted_print_box(delta_forces=delta_forces,ml_forces=ml_forces,abi_forces=abi_forces)
+                    forces += delta_forces
+                elif self.correct_stress_algo == CORRALGO.delta_beta_per_component:
+                    delta_forces = compute_delta_forces_per_component(abi_forces, ml_forces, error_min=0.1, error_max=0.2, epsilon=1e-8)
+                    formatted_print_box(delta_forces=delta_forces,ml_forces=ml_forces,abi_forces=abi_forces)
+                    forces += delta_forces
                 else:
                     raise ValueError(f"Invalid {self.correct_forces_algo=}")
 
                 self.results.update(forces=forces)
+                ##AA FOR delta_foces pass to DFT Test
+                # Define the filename where want to save the data
+                filename = "delta_forces.out"
+                #print("FILE NAME",filename)
+                # Save the NumPy array to a text file with custom formatting and delimiter
+                np.savetxt(filename, delta_forces*(1/51.42208619083232), fmt='%.17f', delimiter=' ')
+                ##AA
+                dict_forces = {'delta_forces': delta_forces,'abi_forces':abi_forces,'ml_forces':ml_forces}
+                with open('forces.json', 'a') as outfile:
+                    outfile.write(json.dumps(dict_forces, cls=MontyEncoder) + '\n')                
 
         if self.correct_stress_algo != CORRALGO.none:
             if self.__verbose: print(f"Applying ab-initio correction to the ml_stress with {self.correct_stress_algo=}")
@@ -1462,7 +1421,7 @@ class _MyCalculator:
             #AA
             from ase.stress import voigt_6_to_full_3x3_stress
             if stress.shape == (6,) :
-                print(f"AADB: ml_stress shape={stress.shape}")
+                if self.__verbose: print(f"ml_stress shape={stress.shape}")
                 stress = voigt_6_to_full_3x3_stress(stress)
 
 
@@ -1470,39 +1429,25 @@ class _MyCalculator:
             if abi_stress is not None:
                 # Change stresses only if have invoked store_abi_forstr_atoms
                 if self.correct_stress_algo == CORRALGO.delta:
-                    # Apply delta correction to stress.
-                    delta_stress = -(ml_stress - abi_stress) ## AA ALL MY Caclculations
-                    #delta_stress = (ml_stress - abi_stress) #
-                    tolerance_delta_stress = 0.1
-                    #delta_stress[np.abs(delta_stress) <= tolerance_delta_stress ] = 0
-                    #------------------------------------------------------
-                    #if self._aacounter_stress == 0 : #in (0,1,2):
-                    #   delta_stress = -(ml_stress - abi_stress)
-                    #else:
-                    #   delta_stress = -(ml_stress - abi_stress) * 0.0
-                    #print(f"{self._aacounter_stress=}") # AA        
-                    #self._aacounter_stress += 1 #AA
-
-                    #delta_stress = -( - abi_stress) * 0.0
-                    #tolerance_delta_stress = 0.05
-                    #print(f"AADB: Before {delta_stress=}")                    
-                    #delta_stress[np.abs(delta_stress) < tolerance_delta_stress ] = 0
-
-
-                    #AA
-                    #print (f"AADB: {stress=}")
-                    #print (f"AADB: {ml_stress=}")
-                    print (f"AADB: {delta_stress=}")
-                    #print (f"AADB: {abi_stress=}")
-                    #print (f"AADB: {ml_stress+delta_stress =}")
+                    beta_stress = 1.0  # Choose an appropriate value between 0 and 1
+                    delta_stress = beta_stress * (abi_stress - ml_stress)  
+                    formatted_print_box(delta_stress=delta_stress,ml_stress=ml_stress,abi_stress=abi_stress)
                     if self.__verbose > 1: print("Updating stress with delta_stress:\n", delta_stress)
                     stress += delta_stress
-                elif self.correct_stress_algo == CORRALGO.one_point:
-                    stress += abi_stress
+                elif self.correct_stress_algo == CORRALGO.delta_beta:
+                    delta_stress = compute_delta_forces(abi_stress, ml_stress, error_min=0.01, error_max=0.05, epsilon=1e-8)
+                    formatted_print_box(delta_stress=delta_stress,ml_stress=ml_stress,abi_stress=abi_stress)
+                    stress += delta_stress
+                elif self.correct_stress_algo == CORRALGO.delta_beta_per_component:
+                    delta_forces = compute_delta_forces_per_component(abi_forces, ml_forces, error_min=0.1, error_max=0.2, epsilon=1e-8)
+                    formatted_print_box(delta_stress=delta_stress,ml_stress=ml_stress,abi_stress=abi_stress)
+                    stress += delta_stress
                 else:
                     raise ValueError(f"Invalid {self.correct_stress_algo=}")
                 self.results.update(stress=stress)
-
+                dict_stress = {'delta_stress': delta_stress,'abi_stress': abi_stress,'ml_stress':ml_stress}
+                with open('stress.json', 'a') as outfile:
+                    outfile.write(json.dumps(dict_stress, cls=MontyEncoder) + '\n')
 
 def as_calculator(obj) -> Calculator:
     """Build an ASE calculator."""
@@ -2186,6 +2131,14 @@ class MlRelaxer(MlBase):
         nn_name = doc.get("nn_name", "chgnet")
         verbose = doc.pop("prtvol")
 
+        nn_optimizer_type = doc.pop("nn_optimizer_type")
+        print(f"{nn_optimizer_type=}")
+        nn_optimizer_nsteps = doc.pop("nn_optimizer_nsteps")
+        print(f"{nn_optimizer_nsteps=}")
+        nn_optimizer_fmax = doc.pop("nn_optimizer_fmax")
+        print(f"{nn_optimizer_fmax=}")
+
+
         structure = Structure.from_abivars(
             acell=3*[1.0],
             rprim=rprim,
@@ -2224,7 +2177,7 @@ class MlRelaxer(MlBase):
         # Set internal parameters according to YAML file and build object.
         #fmax, steps, optimizer = 0.01, 5000, "BFGS"
 
-        fmax, steps, optimizer = 0.01, 5000, "LBFGS"
+        fmax, steps, optimizer = nn_optimizer_fmax, nn_optimizer_nsteps, nn_optimizer_type
 
         #new = cls(atoms, relax_mode, fmax, pressure, steps, optimizer, nn_name, verbose,
         #          workdir=workdir, prefix=prefix)
@@ -2235,6 +2188,10 @@ class MlRelaxer(MlBase):
         gs_stresses = abi_cart_stresses
         gs_energies = abi_energies
         corr_algo = doc.pop("corr_algo")
+        print(f"nn_correction={corr_algo}")
+        allowed_corr_algo = ["none","delta","delta_beta","delta_beta_per_component"]
+        if corr_algo not in allowed_corr_algo:
+            raise ValueError(f"the allowed corr_algo are {allowed_corr_algo} ")
         #corr_algo = CORRALGO.from_string(corr_algo)
         #corr_algo=corr_algo
         #print (f"AADB: {corr_algo=}")
@@ -2349,20 +2306,35 @@ class MlRelaxer(MlBase):
         ##AA
         print(f"corr_algo {corr_algo=}")
         if corr_algo == "delta":
-            print ("AADB: delta correct")
+            print (f"{corr_algo=}")
             self.atoms.calc.set_correct_forces_algo(CORRALGO.delta) #(CORRALGO.delta)
             self.atoms.calc.set_correct_stress_algo(CORRALGO.delta) #(CORRALGO.delta)
+        elif corr_algo == "delta_beta":
+            print (f"{corr_algo=}")
+            self.atoms.calc.set_correct_forces_algo(CORRALGO.delta_beta) #(CORRALGO.delta)
+            self.atoms.calc.set_correct_stress_algo(CORRALGO.delta_beta) #(CORRALGO.delta) 
+        elif corr_algo == "delta_beta_per_component":
+            print (f"{corr_algo=}")
+            self.atoms.calc.set_correct_forces_algo(CORRALGO.delta_beta_per_component) #(CORRALGO.delta)
+            self.atoms.calc.set_correct_stress_algo(CORRALGO.delta_beta_per_component) #(CORRALGO.delta)                        
         else:
+            print (f"{corr_algo=}")
             self.atoms.calc.set_correct_forces_algo(CORRALGO.none) #(CORRALGO.delta)
             self.atoms.calc.set_correct_stress_algo(CORRALGO.none) #(CORRALGO.delta)
         
         ##AA Print stuff
         if self.gs_forces is not None and corr_algo == "delta":
-            print (f"AADB: gs_forces {self.gs_forces=}");print (f"AADB: gs_stress {self.gs_stresses=}")
+            # print (f"gs_forces {self.gs_forces=}");print (f"gs_stress {self.gs_stresses=}")
             #self.atoms.calc.store_abi_forstr_atoms(self.gs_forces, self.gs_stresses, self.atoms)
             self.atoms.calc.store_abi_forstr_atoms(self.gs_forces, self.gs_stresses, self.atoms,self.gs_energies)
         self.atoms.calc = self.atoms.calc
  
+         ##AA Print stuff
+        if self.gs_forces is not None and corr_algo == "delta_beta":
+            # print (f"gs_forces {self.gs_forces=}");print (f"gs_stress {self.gs_stresses=}")
+            #self.atoms.calc.store_abi_forstr_atoms(self.gs_forces, self.gs_stresses, self.atoms)
+            self.atoms.calc.store_abi_forstr_atoms(self.gs_forces, self.gs_stresses, self.atoms,self.gs_energies)
+        self.atoms.calc = self.atoms.calc
         ##AA DONE
         
         print(f"Relaxing structure with relax mode: {self.relax_mode} ...")
@@ -3898,3 +3870,145 @@ class MlCwfEos(MlBase):
         print(f"Output results written to: '{fname}'.")
 
         return data
+
+
+import numpy as np
+
+def compute_delta_forces(abi_forces, ml_forces, error_min=0.01, error_max=0.005, epsilon=1e-8):
+    """
+    Compute delta_forces for force correction using per-atom beta based on per-atom relative errors.
+
+    Parameters:
+    - abi_forces: numpy array of shape (n_atoms, 3), ab-initio forces.
+    - ml_forces: numpy array of shape (n_atoms, 3), ML predicted forces.
+    - error_min: float, minimum error threshold for beta computation.
+    - error_max: float, maximum error threshold for beta computation.
+    - epsilon: float, small number to prevent division by zero.
+
+    Returns:
+    - delta_forces: numpy array of shape (n_atoms, 3), correction to be added to ml_forces.
+    """
+    # Compute force differences
+    force_difference = abi_forces - ml_forces
+
+    # Compute per-atom force magnitudes
+    abi_force_magnitudes = np.linalg.norm(abi_forces, axis=1) + epsilon
+    force_diff_magnitudes = np.linalg.norm(force_difference, axis=1)
+
+    # Compute per-atom relative errors
+    error_atoms = force_diff_magnitudes / abi_force_magnitudes
+
+    # Initialize beta_atoms with ones
+    beta_atoms = np.ones_like(error_atoms)
+
+    # For atoms with error <= error_min, beta = 1.0 (no correction needed)
+    beta_atoms[error_atoms <= error_min] = 1.0
+
+    # For atoms with error >= error_max, compute beta using exponential function
+    mask_high = error_atoms >= error_max
+    beta_atoms[mask_high] = 1.0 - np.exp(-error_atoms[mask_high] ** 2)
+    beta_atoms[mask_high] = np.clip(beta_atoms[mask_high], 0.0, 1.0)
+
+    # For atoms with error between error_min and error_max, compute linear interpolation
+    mask_mid = (error_atoms > error_min) & (error_atoms < error_max)
+    beta_atoms[mask_mid] = (error_atoms[mask_mid] - error_min) / (error_max - error_min)
+
+    # Reshape beta_atoms for broadcasting over force components
+    beta_atoms = beta_atoms[:, np.newaxis]  # Shape: (n_atoms, 1)
+
+    # Compute delta_forces per atom
+    delta_forces = beta_atoms * force_difference  # Shape: (n_atoms, 3)
+
+    return delta_forces
+
+
+
+import numpy as np
+
+def compute_delta_forces_per_component(abi_forces, ml_forces, error_min=0.01, error_max=0.05, epsilon=1e-8):
+    """
+    Compute delta_forces for force correction using per-component beta based on per-component relative errors.
+
+    Parameters:
+    - abi_forces: numpy array of shape (n_atoms, 3), ab-initio forces.
+    - ml_forces: numpy array of shape (n_atoms, 3), ML predicted forces.
+    - error_min: float, minimum error threshold for beta computation.
+    - error_max: float, maximum error threshold for beta computation.
+    - epsilon: float, small number to prevent division by zero.
+
+    Returns:
+    - delta_forces: numpy array of shape (n_atoms, 3), correction to be added to ml_forces.
+    """
+    # Compute force differences per component
+    force_difference = abi_forces - ml_forces  # Shape: (n_atoms, 3)
+
+    # Compute absolute values of ab-initio forces per component
+    abs_abi_forces = np.abs(abi_forces) + epsilon  # Shape: (n_atoms, 3)
+
+    # Compute per-component relative errors
+    error_components = np.abs(force_difference) / abs_abi_forces  # Shape: (n_atoms, 3)
+
+    # Initialize beta_components with ones
+    beta_components = np.ones_like(error_components)  # Shape: (n_atoms, 3)
+
+    # Masks for different error ranges
+    mask_low = error_components <= error_min
+    mask_high = error_components >= error_max
+    mask_mid = (error_components > error_min) & (error_components < error_max)
+
+    # For components with error <= error_min, beta = 1.0 (no correction needed)
+    beta_components[mask_low] = 1.0
+
+    # For components with error >= error_max, compute beta using exponential function
+    beta_components[mask_high] = 1.0 - np.exp(-error_components[mask_high] ** 2)
+    beta_components[mask_high] = np.clip(beta_components[mask_high], 0.0, 1.0)
+
+    # For components with error between error_min and error_max, compute linear interpolation
+    beta_components[mask_mid] = (error_components[mask_mid] - error_min) / (error_max - error_min)
+
+    # Compute delta_forces per component
+    delta_forces = beta_components * force_difference  # Shape: (n_atoms, 3)
+
+    # Optionally, print per-component errors and betas
+    # Uncomment the following lines if you want to see the values
+    n_atoms = abi_forces.shape[0]
+    for i in range(n_atoms):
+        for j in range(3):
+            error_pct = error_components[i, j] * 100
+            beta = beta_components[i, j]
+            print(f"Atom {i}, Component {['x', 'y', 'z'][j]}, Relative error: {error_pct:.2f}%, Beta: {beta:.2f}")
+
+    return delta_forces
+
+
+# Function to format and print in a box with alignment
+def formatted_print_box(**kwargs):
+    def array_to_box(name, array):
+        lines = [f"{name} ="]
+        lines += ["  " + "  ".join(f"{value:12.8f}" for value in row) for row in array]
+        width = max(len(line) for line in lines) + 4
+        box = ["*" * width]
+        box += [f"* {line.ljust(width - 3)}*" for line in lines]
+        box.append("*" * width)
+        return "\n".join(box)
+    
+    for key, value in kwargs.items():
+        if key == "beta_forces" or key == "beta_stress":
+            print(f"{key} = {value:.1f}\n")
+        elif isinstance(value, np.ndarray):
+            # If key contains `ml_` and `delta_`, assume we want to add them for display
+            if "ml_forces" in kwargs and "delta_forces" in kwargs and key == "delta_forces":
+                print(array_to_box("delta_forces", kwargs["delta_forces"]))
+                print(array_to_box("ml_forces + delta_forces", kwargs["ml_forces"] + kwargs["delta_forces"]))
+                print(array_to_box("abi_forces", kwargs["abi_forces"]))
+
+            elif "ml_stress" in kwargs and "delta_stress" in kwargs and key == "delta_stress":
+                print(array_to_box("delta_stress", kwargs["delta_stress"]))
+                print(array_to_box("ml_stress + delta_stress", kwargs["ml_stress"] + kwargs["delta_stress"]))
+                print(array_to_box("abi_stress", kwargs["abi_stress"]))
+            # Otherwise, print the single array as-is
+            else:
+                # print(array_to_box(key, value))
+                pass
+        print()  # Separate each entry by a new line for readability
+
